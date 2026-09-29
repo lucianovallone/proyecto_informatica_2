@@ -1,2 +1,2 @@
-*proyecto_informatica_2
-**Probando
+#proyecto_informatica_2
+##Probando
