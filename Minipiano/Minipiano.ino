@@ -51,7 +51,7 @@ void setup() {
   }
 }
 
-// Lee los pulsadores, controla el buzzer y envía datos en vivo a Processing
+// Lee los pulsadores, controla el buzzer, guarda silencios/notas y avisa a Processing
 void tocarYGrabar() {
   int teclaDetectada = -1;
 
@@ -64,30 +64,59 @@ void tocarYGrabar() {
 
   // 1. SE PRESIONÓ UNA TECLA NUEVA
   if (teclaDetectada != -1 && teclaDetectada != teclaSonando) {
+    // Si estamos grabando y ya se tocó al menos una nota antes, guardamos el silencio previo
+    if (estadoActual == ESTADO_GRABANDO && indiceNota > 0 && indiceNota < MAX_NOTAS) {
+      unsigned int duracionSilencio = millis() - tiempoInicio;
+      melodia[indiceNota].numeroTecla = 255; // 255 = código para representar silencio
+      melodia[indiceNota].duracion = duracionSilencio;
+      indiceNota++;
+    }
+
     tone(PIN_BUZZER, piano[teclaDetectada].obtenerFrecuencia());
-    tiempoInicio = millis();
+    tiempoInicio = millis(); // Reiniciamos el reloj para medir cuánto dura esta nota
     teclaSonando = teclaDetectada;
-    Serial.println(teclaSonando); // Avisa a Processing en vivo qué tecla pintar
+    Serial.println(teclaSonando); // Avisa a Processing en vivo qué tecla pintar (0 al 12)
   }
 
   // 2. SE SOLTÓ LA TECLA QUE ESTABA SONANDO
   if (teclaDetectada == -1 && teclaSonando != -1) {
     noTone(PIN_BUZZER);
-    unsigned int duracion = millis() - tiempoInicio;
-    Serial.println(-1); // Avisa a Processing que apague la tecla en pantalla
+    unsigned int duracionNota = millis() - tiempoInicio;
+    tiempoInicio = millis(); // Reiniciamos el reloj para empezar a medir el silencio que inicia ahora
+    Serial.println(-1);      // Avisa a Processing que apague la tecla en pantalla
 
-    // Si estamos en modo GRABANDO, guardamos en el arreglo en memoria
+    // Si estamos en modo GRABANDO, guardamos la nota que acaba de terminar
     if (estadoActual == ESTADO_GRABANDO && indiceNota < MAX_NOTAS) {
       melodia[indiceNota].numeroTecla = teclaSonando;
-      melodia[indiceNota].duracion = duracion;
-      indiceNota++; // Avanzamos al siguiente casillero para la próxima nota
+      melodia[indiceNota].duracion = duracionNota;
+      indiceNota++;
     }
     teclaSonando = -1;
   }
 }
 
-// Bucle principal con la máquina de estados
+// Bucle principal con recepción de comandos y máquina de estados
 void loop() {
+  // 1. Escuchar si Processing envió una orden de cambio de estado
+  if (Serial.available() > 0) {
+    char comando = Serial.read();
+
+    if (comando == 'L') {
+      estadoActual = ESTADO_LIBRE;
+      noTone(PIN_BUZZER); // Por seguridad, apagamos cualquier sonido previo
+    } 
+    else if (comando == 'G') {
+      estadoActual = ESTADO_GRABANDO;
+      indiceNota = 0;     // Reiniciamos el contador para grabar desde cero
+      noTone(PIN_BUZZER);
+    } 
+    else if (comando == 'R') {
+      estadoActual = ESTADO_REPRODUCIENDO;
+      noTone(PIN_BUZZER);
+    }
+  }
+
+  // 2. Ejecutar el estado actual
   switch (estadoActual) {
     case ESTADO_LIBRE:
       digitalWrite(LED_LIBRE, HIGH);
@@ -107,9 +136,7 @@ void loop() {
       digitalWrite(LED_LIBRE, LOW);
       digitalWrite(LED_GRABANDO, LOW);
       digitalWrite(LED_REPRODUCIENDO, HIGH);
-      // Aquí irá la lógica para reproducir la melodía
+      // Aca irá la función para reproducir la melodía
       break;
   }
 }
-
-
