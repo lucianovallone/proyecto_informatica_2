@@ -1,2 +1,5 @@
-#proyecto_informatica_2
-##Probando
+\#proyecto\_informatica\_2
+##Primeros pasos
+
+
+
