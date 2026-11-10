@@ -1,5 +1,5 @@
-\#proyecto\_informatica\_2
-##Primeros pasos
+# proyecto_informatica_2
+## Primeros pasos
 
 
 
